@@ -7,6 +7,7 @@ const mongoose = require('mongoose');
 const User = require('./models/User');
 const withAuth = require('./middleware');
 const cors = require('cors');
+const Invoice = require('./models/Invoice');
 
 const app = express();
 
@@ -92,7 +93,13 @@ app.post('/api/authenticate', function(req, res) {
           });
         } else {
           // Issue token
-          const payload = { email };
+          const payload = {
+            email: email,
+            role: user.role,
+            lastname: user.lastname,
+            firstname: user.firstname,
+            address: user.address,
+          };
           const token = jwt.sign(payload, secret, {
             expiresIn: '1h'
           });
@@ -119,6 +126,42 @@ app.post('/api/authenticate', function(req, res) {
 
 app.get('/checkToken', withAuth, function(req, res) {
   res.sendStatus(200);
+});
+
+app.post('/api/invoices', withAuth, function(req, res) {
+  const {email, type, address, value} = req.body;
+  const invoice = new Invoice({
+    email: email,
+    type: type,
+    address: address,
+    value: value,
+  });
+  invoice.save((err) => {
+    if (err) {
+      console.log(err);
+      res.status(500).send("Error creating new bill please try again.");
+    } else {
+      res.status(200).send("Creation complete.");
+    }
+  })
+});
+
+app.get('/api/invoices', withAuth, function(req, res) {
+  if (req.role === 'admin') {
+    Invoice.find({}, (err, items) => {
+      if (err) {
+        return res.status(500).send('Error finding invoices.');
+      }
+      res.status(200).json(items);
+    });
+  } else {
+    Invoice.find({email: req.email}, (err, items) => {
+      if (err) {
+        return res.status(500).send('Error finding invoices.');
+      }
+      res.status(200).json(items);
+    });
+  }
 });
 
 app.listen(process.env.PORT || 8080);
