@@ -98,7 +98,10 @@ app.post('/api/authenticate', function(req, res) {
           });
           res
           .cookie('token', token, { httpOnly: true })
-          .set('Token', token)
+          .set({
+            "x-token": token,
+            "Access-Control-Expose-Headers": "x-token",
+          })
           .status(200)
           .json({
             user: {
