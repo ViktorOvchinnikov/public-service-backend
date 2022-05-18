@@ -98,6 +98,7 @@ app.post('/api/authenticate', function(req, res) {
           });
           res
           .cookie('token', token, { httpOnly: true })
+          .set('Token', token)
           .status(200)
           .json({
             user: {
