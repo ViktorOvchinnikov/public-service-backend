@@ -16,6 +16,9 @@ const withAuth = function(req, res, next) {
         res.status(401).send('Unauthorized: Invalid token');
       } else {
         req.email = decoded.email;
+        req.role = decoded.role;
+        req.firstname = decoded.firstname;
+        req.lastname = decoded.lastname;
         next();
       }
     });
