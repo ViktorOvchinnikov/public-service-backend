@@ -135,6 +135,8 @@ app.post('/api/invoices', withAuth, function(req, res) {
     type: type,
     address: address,
     value: value,
+    firstname: req.firstname,
+    lastname: req.lastname,
   });
   invoice.save((err) => {
     if (err) {
