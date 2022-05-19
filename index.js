@@ -210,14 +210,14 @@ app.post('/api/invoices', withAuth, function(req, res) {
 
 app.get('/api/invoices', withAuth, function(req, res) {
   if (req.role === 'admin') {
-    Invoice.find({}, (err, items) => {
+    Invoice.find({}).sort('-created_at').exec((err, items) => {
       if (err) {
         return res.status(500).send('Error finding invoices.');
       }
       res.status(200).json(items);
     });
   } else {
-    Invoice.find({email: req.email}, (err, items) => {
+    Invoice.find({email: req.email}).sort('-created_at').exec((err, items) => {
       if (err) {
         return res.status(500).send('Error finding invoices.');
       }
