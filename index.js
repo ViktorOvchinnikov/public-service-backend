@@ -8,14 +8,13 @@ const User = require('./models/User');
 const withAuth = require('./middleware');
 const cors = require('cors');
 const Invoice = require('./models/Invoice');
+const Rate = require('./models/Rate');
 
 const app = express();
 
 app.use(cors());
 
 const secret = 'mysecretsshhh';
-
-//db secret db:JZd5nOWBYvfjShZh
 
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
@@ -38,7 +37,51 @@ app.get('/', function (req, res) {
 });
 
 app.get('/api/home', function(req, res) {
+  const rate = new Rate({
+    gas: 7.25,
+    water: 25,
+    
+  })
   res.send('Welcome!');
+  
+});
+
+app.post('/api/rates', withAuth, (req, res) => {
+  if (req.role !== 'admin') return res.sendStatus(403);
+
+  const {latinName, cyrillicName, price} = req.body;
+  const rate = new Rate({latinName, cyrillicName, price});
+  rate.save((err) => {
+    if (err) {
+      console.log(err);
+      res.status(500).send("Error creating new rate.");
+    } else {
+      res.status(200).send("Creating successful");
+    }
+  })
+});
+
+app.put('/api/rates', withAuth, (req, res) => {
+  if (req.role !== 'admin') return res.sendStatus(403);
+
+  const {latinName, price} = req.body;
+  Rate.findOneAndUpdate({latinName: latinName}, {price: price}, {new: true})
+    .then((result) => {
+      res.status(200).json({rate: result});
+    })
+    .catch((err) => {
+      console.log(err);
+      res.status(500).json({error: err});
+    });
+});
+
+app.get('/api/rates', withAuth, (req, res) => {
+  Rate.find({})
+    .then((items) => res.status(200).json({rates: items}))
+    .catch((err) => {
+      console.log(err);
+      res.status(500).json({error: err});
+    });
 });
 
 app.get('/api/secret', withAuth, function(req, res) {
@@ -101,22 +144,22 @@ app.post('/api/authenticate', function(req, res) {
             address: user.address,
           };
           const token = jwt.sign(payload, secret, {
-            expiresIn: '1h'
+            expiresIn: '100h'
           });
           res
-          .cookie('token', token, { httpOnly: true })
-          .set({
-            "x-token": token,
-            "Access-Control-Expose-Headers": "x-token",
-          })
-          .status(200)
-          .json({
-            user: {
-              address: user.address,
-              firstName: user.firstname,
-              lastName: user.lastname,
-              role: user.role,
-            }
+            .cookie('token', token, { httpOnly: true })
+            .set({
+              "x-token": token,
+              "Access-Control-Expose-Headers": "x-token",
+            })
+            .status(200)
+            .json({
+              user: {
+                address: user.address,
+                firstName: user.firstname,
+                lastName: user.lastname,
+                role: user.role,
+              }
           });
         }
       });
@@ -128,24 +171,41 @@ app.get('/checkToken', withAuth, function(req, res) {
   res.sendStatus(200);
 });
 
-app.post('/api/invoices', withAuth, function(req, res) {
-  const {email, type, address, value} = req.body;
-  const invoice = new Invoice({
-    email: email,
-    type: type,
-    address: address,
-    value: value,
-    firstname: req.firstname,
-    lastname: req.lastname,
-  });
-  invoice.save((err) => {
-    if (err) {
+app.get('/api/pastValue/:type', withAuth, function (req, res) {
+  const invoiceType = req.params.type;
+
+  Invoice.findOne({email: req.email, type: invoiceType}, {}, { sort: { 'created_at' : -1} })
+    .then((result) => {
+      res.status(200).json({"value": result.value});
+    })
+    .catch((err) => {
       console.log(err);
-      res.status(500).send("Error creating new bill please try again.");
-    } else {
-      res.status(200).send("Creation complete.");
-    }
-  })
+      res.status(404).send('Not found');
+    });
+})
+
+app.post('/api/invoices', withAuth, function(req, res) {
+  const invoices = req.body.invoices;
+  const result = [];
+
+  for (const invoice of invoices) {
+    result.push({
+      email: req.email,
+      address: req.address,
+      firstname: req.firstname,
+      lastname: req.lastname,
+      type: invoice.type,
+      value: invoice.value,
+      cost: invoice.cost,
+    });
+  }
+
+  Invoice.insertMany(result)
+    .then(() => res.status(200).send("Creation complete."))
+    .catch((err) => {
+      console.log(err);
+      res.status(500).send("Error creating new bills please try again.");
+    });
 });
 
 app.get('/api/invoices', withAuth, function(req, res) {
