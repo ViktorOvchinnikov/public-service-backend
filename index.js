@@ -61,18 +61,31 @@ app.post('/api/rates', withAuth, (req, res) => {
   })
 });
 
-app.put('/api/rates', withAuth, (req, res) => {
+app.put('/api/rates', withAuth, async (req, res) => {
   if (req.role !== 'admin') return res.sendStatus(403);
 
-  const {latinName, price} = req.body;
-  Rate.findOneAndUpdate({latinName: latinName}, {price: price}, {new: true})
-    .then((result) => {
-      res.status(200).json({rate: result});
+  const rates = req.body.rates;
+
+  let dbPromises = rates.map((rate) => {
+    return new Promise((resolve) => {
+      Rate.findOneAndUpdate({latinName: rate.latinName}, {price: rate.price})
+      .then(() => resolve())
+      .catch((err) => {
+        console.log(err);
+        return res.status(500).json({error: err});
+      });
     })
-    .catch((err) => {
-      console.log(err);
-      res.status(500).json({error: err});
-    });
+  })
+
+  Promise.all(dbPromises)
+    .then(() => {
+      Rate.find({})
+        .then((items) => res.status(200).json({rates: items}))
+        .catch((err) => {
+          console.log(err);
+          res.status(500).json({error: err});
+        });
+    })
 });
 
 app.get('/api/rates', withAuth, (req, res) => {
