@@ -196,9 +196,9 @@ app.get('/api/pastValues', withAuth, function (req, res) {
   Promise.all([water, gas, electricity])
     .then((values) => {
       res.status(200).json({values: {
-        "Вода": values[0],
-        "Газ": values[1],
-        "Электричество": values[2],
+        "Вода": values[0].value,
+        "Газ": values[1].value,
+        "Электричество": values[2].value,
       }});
     }) 
 })
