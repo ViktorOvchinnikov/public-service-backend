@@ -184,17 +184,23 @@ app.get('/checkToken', withAuth, function(req, res) {
   res.sendStatus(200);
 });
 
-app.get('/api/pastValue/:type', withAuth, function (req, res) {
-  const invoiceType = req.params.type;
+app.get('/api/pastValues', withAuth, function (req, res) {
 
-  Invoice.findOne({email: req.email, type: invoiceType}, {}, { sort: { 'created_at' : -1} })
-    .then((result) => {
-      res.status(200).json({"value": result.value});
-    })
-    .catch((err) => {
-      console.log(err);
-      res.status(404).send('Not found');
-    });
+  const water = Invoice.findOne({email: req.email, type: 'Вода'}, {}, { sort: { 'created_at' : -1} })
+    .then((item) => item)
+  const gas = Invoice.findOne({email: req.email, type: 'Газ'}, {}, { sort: { 'created_at' : -1} })
+    .then((item) => item);
+  const electricity = Invoice.findOne({email: req.email, type: 'Электричество'}, {}, { sort: { 'created_at' : -1} })
+    .then((item) => item);
+
+  Promise.all([water, gas, electricity])
+    .then((values) => {
+      res.status(200).json({values: {
+        "Вода": values[0],
+        "Газ": values[1],
+        "Электричество": values[2],
+      }});
+    }) 
 })
 
 app.post('/api/invoices', withAuth, function(req, res) {
